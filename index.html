@@ -141,7 +141,7 @@
 <script>
   // ================= CONFIG =================
   const TZ = "America/New_York";
-  const WINDOW_HOURS = 3;
+  const WINDOW_HOURS = 1;
   const ALIVE_COUNT = 5;
 
   // Align the windows to your workday if you want (e.g., 8am start):
@@ -156,6 +156,18 @@
     "Dan", "Danny", "Lamar", "Meetch", "Stroot"
   ];
   // =========================================
+  // ====== Google Form Prefill (EDIT THESE) ======
+  const FORM_BASE = "PASTE_YOUR_PREFILLED_LINK_BASE_HERE"; 
+  // IMPORTANT: FORM_BASE should be the form URL up to "...viewform?usp=pp_url" (no entry params)
+  
+  const ENTRY_SHOOTER   = "entry.111111111111";  // replace
+  const ENTRY_TARGET    = "entry.222222222222";  // replace
+  const ENTRY_EVENTTYPE = "entry.333333333333";  // replace
+  const ENTRY_QTY       = "entry.444444444444";  // replace
+  const ENTRY_CONFIRMED = "entry.555555555555";  // replace
+  // Optional if you have a Date question:
+  const ENTRY_DATE      = ""; // e.g. "entry.666666666666" or leave "" if not used
+
 
   // Seeded PRNG (deterministic)
   function xmur3(str) {
@@ -258,6 +270,27 @@
 
     return { rng, nextRotation, windowLabel };
   }
+  
+  function openPrefilledHitForm(targetName) {
+    const shooter = prompt("Shooter name (exact match from Players list):");
+    if (!shooter) return;
+  
+    const params = new URLSearchParams();
+    params.set(ENTRY_SHOOTER, shooter);
+    params.set(ENTRY_TARGET, targetName);
+    params.set(ENTRY_EVENTTYPE, "Hit");
+    params.set(ENTRY_QTY, "1");
+    params.set(ENTRY_CONFIRMED, "Yes");
+  
+    if (ENTRY_DATE) {
+      const p = nowPartsInTZ();
+      const dateStr = `${p.m}/${p.d}/${p.y}`;
+      params.set(ENTRY_DATE, dateStr);
+    }
+  
+    const url = `${FORM_BASE}&${params.toString()}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 
   function render() {
     const p = nowPartsInTZ();
@@ -274,7 +307,17 @@
     document.getElementById("windowLabel").textContent = windowLabel;
 
     document.getElementById("alive").innerHTML =
-      alive.map(n => `<div class="pill pillAlive">✅ ${n}</div>`).join("");
+      alive.map(n => `<div class="pill pillAlive pillClickable" data-name="${n}">✅ ${n}</div>`).join("");
+    //document.getElementById("alive").innerHTML =
+      //alive.map(n => `<div class="pill pillAlive">✅ ${n}</div>`).join("");
+    document.querySelectorAll("#alive .pillClickable").forEach(el => {
+      el.style.cursor = "pointer";
+      el.title = "Click to log a hit (opens form)";
+      el.addEventListener("click", () => {
+        const name = el.getAttribute("data-name");
+        openPrefilledHitForm(name);
+      });
+    });
 
     document.getElementById("protected").innerHTML =
       protectedList.map(n => `<div class="pill pillProtected">🛡 ${n}</div>`).join("");
