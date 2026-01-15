@@ -9,26 +9,20 @@
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     .wrap { padding: 10px; }
     .card{
-      max-width: 820px; margin: 0 auto; padding: 18px 18px 16px;
+      max-width: 980px; margin: 0 auto; padding: 18px 18px 16px;
       border-radius: 18px; border: 1px solid rgba(127,127,127,.25);
       box-shadow: 0 8px 30px rgba(0,0,0,.08);
       background: rgba(255,255,255,.02);
     }
     .kicker { opacity:.75; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
-    h1 { margin: 6px 0 10px; font-size: 26px; }
-    .meta { opacity:.75; font-size: 13px; margin-top: 4px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 14px; }
-    .pill{
-      padding: 12px 14px; border-radius: 14px;
-      background: rgba(127,127,127,.12);
-      font-weight: 700;
-      text-align:center;
-    }
-    .row { display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px; }
+    h1 { margin: 6px 0 6px; font-size: 26px; }
+    .meta { opacity:.80; font-size: 13px; margin-top: 6px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px; align-items: center; }
     .chip{
       padding: 10px 12px; border-radius: 14px;
       background: rgba(127,127,127,.12);
       font-size: 13px;
+      border: 1px solid rgba(127,127,127,.18);
     }
     .small { opacity:.75; font-weight: 500; }
     .btn {
@@ -37,20 +31,109 @@
       border-radius: 14px; padding: 10px 12px;
       cursor: pointer; font-weight: 700;
     }
+
+    .twoCol {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    @media (max-width: 820px) {
+      .twoCol { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      border-radius: 18px;
+      border: 1px solid rgba(127,127,127,.18);
+      background: rgba(127,127,127,.06);
+      padding: 12px;
+    }
+    .panelTitle {
+      display:flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .panelTitle h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: .02em;
+    }
+    .count {
+      opacity:.75;
+      font-size: 12px;
+    }
+
+    .grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+
+    /* Alive vs Protected color-coding */
+    .pill{
+      padding: 12px 14px; border-radius: 14px;
+      font-weight: 800;
+      text-align:center;
+      border: 1px solid rgba(127,127,127,.18);
+    }
+    .pillAlive{
+      background: rgba(34, 197, 94, .18); /* green tint */
+      border-color: rgba(34, 197, 94, .35);
+    }
+    .pillProtected{
+      background: rgba(148, 163, 184, .18); /* slate tint */
+      border-color: rgba(148, 163, 184, .35);
+      font-weight: 700;
+    }
+
+    .legendDot {
+      display:inline-block; width:10px; height:10px; border-radius: 999px; margin-right: 6px;
+      vertical-align: middle;
+    }
+    .dotAlive { background: rgba(34, 197, 94, .85); }
+    .dotProtected { background: rgba(148, 163, 184, .85); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Alive Window (Rotates every 3 hours)</h1>
-      <div class="meta" id="window"></div>
+      <h1>Alive Window</h1>
 
-      <div class="grid" id="alive"></div>
+      <div class="meta" id="windowLabel"></div>
 
       <div class="row">
-        <div class="chip"><span class="">Next rotation in:</span> <span id="countdown"></span></div>
-        <div class="chip"><span class="">Timezone:</span> America/New_York</div>
+        <div class="chip">
+          <span class="">Next rotation in:</span>
+          <span id="countdown" style="font-weight:800;"></span>
+        </div>
+        <div class="chip"><span class="small">Timezone:</span> America/New_York</div>
+        <div class="chip">
+          <span class="legendDot dotAlive"></span><span class="small">Alive</span>
+          &nbsp;&nbsp;
+          <span class="legendDot dotProtected"></span><span class="small">Protected</span>
+        </div>
         <button class="btn" id="refreshBtn" title="Recompute (same result within the same window)">Refresh</button>
+      </div>
+
+      <div class="twoCol">
+        <div class="panel">
+          <div class="panelTitle">
+            <h2>✅ Alive (scorable)</h2>
+            <div class="count" id="aliveCount"></div>
+          </div>
+          <div class="grid" id="alive"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panelTitle">
+            <h2>🛡 Protected (immune)</h2>
+            <div class="count" id="protectedCount"></div>
+          </div>
+          <div class="grid" id="protected"></div>
+        </div>
+      </div>
+
+      <div class="meta" style="margin-top:12px;">
+        Rule of thumb: only the <b>Alive</b> list can be hit/scored during this window. Everyone else is <b>Protected</b>.
       </div>
     </div>
   </div>
@@ -61,7 +144,11 @@
   const WINDOW_HOURS = 3;
   const ALIVE_COUNT = 5;
 
-  // Replace with your active players
+  // Align the windows to your workday if you want (e.g., 8am start):
+  // 0 = midnight aligned; 8 = windows start at 8:00, 11:00, 2:00, etc.
+  const WINDOW_START_HOUR_OFFSET = 8;
+
+  // Replace with your active players (must match how you spell names elsewhere)
   const PLAYERS = [
     "Alex Marshall", "Andy", "Ben", "Cal", "DeRo",
     "Gabe", "KP", "Mello", "Sean", "Steph",
@@ -110,35 +197,6 @@
     };
   }
 
-  function blockInfo() {
-    const p = nowPartsInTZ();
-    const blockIndex = Math.floor(p.hh / WINDOW_HOURS);  // 0..7 for 3-hour windows
-    const startHour = blockIndex * WINDOW_HOURS;
-    const endHour = startHour + WINDOW_HOURS;
-
-    // Use a seed that changes only when date or block changes
-    const seedStr = `${p.y}-${String(p.m).padStart(2,"0")}-${String(p.d).padStart(2,"0")}-block${blockIndex}`;
-    const seedFn = xmur3(seedStr);
-    const rng = mulberry32(seedFn());
-
-    // Next rotation time (same date, next block start; handles day rollover)
-    let nextY = p.y, nextM = p.m, nextD = p.d, nextH = endHour;
-    if (nextH >= 24) {
-      // naive day increment (good enough for this use; Intl uses real calendar on display)
-      const dt = new Date(p.y, p.m - 1, p.d, 0, 0, 0);
-      dt.setDate(dt.getDate() + 1);
-      nextY = dt.getFullYear();
-      nextM = dt.getMonth() + 1;
-      nextD = dt.getDate();
-      nextH = 0;
-    }
-
-    // Convert next rotation to a local Date representing TZ wall-clock
-    const nextRotation = new Date(nextY, nextM - 1, nextD, nextH, 0, 0);
-
-    return { p, blockIndex, startHour, endHour, seedStr, rng, nextRotation };
-  }
-
   function seededShuffle(arr, rng) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -148,43 +206,83 @@
     return a;
   }
 
-  function fmtWindow(y,m,d,startHour,endHour) {
-    const start = new Date(y, m-1, d, startHour, 0, 0);
-    const end = new Date(y, m-1, d, Math.min(endHour, 23), 59, 59);
+  function pad2(n){ return String(n).padStart(2,"0"); }
 
-    const fmt = new Intl.DateTimeFormat("en-US", {
-      timeZone: TZ, weekday:"long", month:"short", day:"numeric",
-      hour:"numeric", minute:"2-digit"
-    });
+  function fmtTimeLabel(y,m,d,h,minute=0) {
+    const dt = new Date(y, m-1, d, h, minute, 0);
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: TZ, hour:"numeric", minute:"2-digit"
+    }).format(dt);
+  }
 
-    // If endHour is 24, we show next day 12:00 AM as “end”
+  function computeWindow(p) {
+    // shift hour by offset so windows align to workday
+    const shiftedHour = (p.hh - WINDOW_START_HOUR_OFFSET + 24) % 24;
+    const blockIndex = Math.floor(shiftedHour / WINDOW_HOURS); // 0..(24/WINDOW_HOURS - 1)
+    const startHour = (blockIndex * WINDOW_HOURS + WINDOW_START_HOUR_OFFSET) % 24;
+    const endHour = (startHour + WINDOW_HOURS);
+
+    // seed changes only on date + blockIndex + offset
+    const seedStr = `${p.y}-${pad2(p.m)}-${pad2(p.d)}-block${blockIndex}-offset${WINDOW_START_HOUR_OFFSET}`;
+    const seedFn = xmur3(seedStr);
+    const rng = mulberry32(seedFn());
+
+    // compute next rotation (end of this window)
+    let nextY = p.y, nextM = p.m, nextD = p.d, nextH = endHour;
+    if (nextH >= 24) {
+      const dt = new Date(p.y, p.m - 1, p.d, 0, 0, 0);
+      dt.setDate(dt.getDate() + 1);
+      nextY = dt.getFullYear();
+      nextM = dt.getMonth() + 1;
+      nextD = dt.getDate();
+      nextH = endHour - 24;
+    }
+    const nextRotation = new Date(nextY, nextM - 1, nextD, nextH, 0, 0);
+
+    // window label
+    const startLabel = fmtTimeLabel(p.y, p.m, p.d, startHour, 0);
     let endLabel;
     if (endHour >= 24) {
-      const dt = new Date(y, m-1, d, 0, 0, 0);
+      const dt = new Date(p.y, p.m - 1, p.d, 0, 0, 0);
       dt.setDate(dt.getDate() + 1);
-      endLabel = fmt.format(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0));
+      endLabel = fmtTimeLabel(dt.getFullYear(), dt.getMonth()+1, dt.getDate(), endHour-24, 0);
     } else {
-      endLabel = fmt.format(new Date(y, m-1, d, endHour, 0, 0));
+      endLabel = fmtTimeLabel(p.y, p.m, p.d, endHour, 0);
     }
 
-    return `${fmt.format(start)} → ${endLabel}`;
+    const dateLabel = new Intl.DateTimeFormat("en-US", {
+      timeZone: TZ, weekday:"long", month:"short", day:"numeric"
+    }).format(new Date(p.y, p.m-1, p.d, 12, 0, 0));
+
+    const windowLabel = `Window: ${dateLabel} • ${startLabel} – ${endLabel} ET`;
+
+    return { rng, nextRotation, windowLabel };
   }
 
   function render() {
-    const { p, startHour, endHour, rng, nextRotation } = blockInfo();
+    const p = nowPartsInTZ();
+    const { rng, nextRotation, windowLabel } = computeWindow(p);
 
-    // Pick ALIVE_COUNT unique names
+    // choose alive list deterministically
     const shuffled = seededShuffle(PLAYERS, rng);
     const alive = shuffled.slice(0, Math.min(ALIVE_COUNT, shuffled.length));
+    const aliveSet = new Set(alive);
 
-    document.getElementById("alive").innerHTML = alive
-      .map(n => `<div class="pill">✅ ${n}</div>`)
-      .join("");
+    // protected = everyone else
+    const protectedList = PLAYERS.filter(n => !aliveSet.has(n));
 
-    document.getElementById("window").textContent =
-      `Window: ${fmtWindow(p.y,p.m,p.d,startHour,endHour)} (ET) • Alive: ${alive.length}/${PLAYERS.length}`;
+    document.getElementById("windowLabel").textContent = windowLabel;
 
-    // Countdown to next rotation
+    document.getElementById("alive").innerHTML =
+      alive.map(n => `<div class="pill pillAlive">✅ ${n}</div>`).join("");
+
+    document.getElementById("protected").innerHTML =
+      protectedList.map(n => `<div class="pill pillProtected">🛡 ${n}</div>`).join("");
+
+    document.getElementById("aliveCount").textContent = `${alive.length} of ${PLAYERS.length}`;
+    document.getElementById("protectedCount").textContent = `${protectedList.length} of ${PLAYERS.length}`;
+
+    // countdown to next rotation
     const now = new Date(p.y, p.m-1, p.d, p.hh, p.mm, p.ss);
     const diffMs = nextRotation.getTime() - now.getTime();
     const totalSec = Math.max(0, Math.floor(diffMs / 1000));
@@ -192,7 +290,7 @@
     const mm = Math.floor((totalSec % 3600) / 60);
     const ss = totalSec % 60;
     document.getElementById("countdown").textContent =
-      `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+      `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
   }
 
   render();
